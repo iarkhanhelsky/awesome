@@ -15,15 +15,21 @@ local beautiful = require("beautiful")
 local naughty   = require("naughty")
 local drop      = require("scratchdrop")
 local lain      = require("lain")
+
+-- Helpers-functions
+require("helpers/helpers")
 -- }}}
 
 -- {{{ Error handling
+-- Check if awesome encountered an error during startup and fell back to
+-- another config (This code will only ever execute for the fallback config)
 if awesome.startup_errors then
     naughty.notify({ preset = naughty.config.presets.critical,
                      title = "Oops, there were errors during startup!",
                      text = awesome.startup_errors })
 end
 
+-- Handle runtime errors after startup
 do
     local in_error = false
     awesome.connect_signal("debug::error", function (err)
@@ -48,8 +54,15 @@ function run_once(cmd)
   awful.util.spawn_with_shell("pgrep -u $USER -x " .. findme .. " > /dev/null || (" .. cmd .. ")")
 end
 
+os.execute("setxkbmap -layout 'us,ru' -variant 'winkeys' -option 'grp:caps_toggle,grp_led:caps,compose:ralt' &")
+
 run_once("urxvtd")
 run_once("unclutter")
+run_once("kbdd")
+run_once("xscreensaver -no-splash")
+run_once("nm-applet")
+run_once("skype")
+run_once("wmname LG3D")
 -- }}}
 
 -- {{{ Variable definitions
@@ -59,6 +72,16 @@ os.setlocale(os.getenv("LANG"))
 -- beautiful init
 beautiful.init(os.getenv("HOME") .. "/.config/awesome/themes/powerarrow-darker/theme.lua")
 
+--{{ Naughty theme 
+naughty.config.presets.font         = beautiful.notify_font
+naughty.config.presets.fg           = beautiful.notify_fg
+naughty.config.presets.bg           = beautiful.notify_bg
+naughty.config.presets.normal.border_color = beautiful.notify_border
+naughty.config.presets.normal.opacity      = 0.7
+naughty.config.presets.low.opacity         = 0.7
+naughty.config.presets.critical.opacity    = 0.7
+--}}
+
 -- common
 modkey     = "Mod4"
 altkey     = "Mod1"
@@ -67,13 +90,56 @@ editor     = os.getenv("EDITOR") or "nano" or "vi"
 editor_cmd = terminal .. " -e " .. editor
 
 -- user defined
-browser    = "dwb"
-browser2   = "iron"
-gui_editor = "gvim"
+browser    = "chromium-browser"
+browser2   = "firefox"
+gui_editor = "subl"
 graphics   = "gimp"
 mail       = terminal .. " -e mutt "
 iptraf     = terminal .. " -g 180x54-20+34 -e sudo iptraf-ng -i all "
 musicplr   = terminal .. " -g 130x34-320+16 -e ncmpcpp "
+
+-- {{{ Function definition
+
+local sys = {}
+function sys.suspend()
+    exec('dbus-send --system --print-reply --dest="org.freedesktop.UPower" /org/freedesktop/UPower org.freedesktop.UPower.Suspend')
+end
+function sys.hibernate()
+    exec('dbus-send --system --print-reply --dest="org.freedesktop.UPower" /org/freedesktop/UPower org.freedesktop.UPower.Hibernate')
+end
+function sys.reboot()
+    exec('dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart')
+end
+function sys.shutdown()
+    exec('dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop')
+end
+function sys.logout()
+    awful.util.spawn('gnome-session-quit')
+end
+function sys.lock()
+    awful.util.spawn('xscreensaver-command -lock')
+end
+
+function show_window_info(c)
+  local geom = c:geometry()
+
+  local t = ""
+  if c.class    then t = t .. setFg("green", "<b>Class</b>: ")    .. c.class    .. "\n" end
+  if c.instance then t = t .. setFg("green", "<b>Instance</b>: ") .. c.instance .. "\n" end
+  if c.role     then t = t .. setFg("green", "<b>Role</b>: ")     .. c.role     .. "\n" end
+  if c.name     then t = t .. setFg("green", "<b>Name</b>: ")     .. c.name     .. "\n" end
+  if c.type     then t = t .. setFg("green", "<b>Type</b>: ")     .. c.type     .. "\n" end
+  if geom.width and geom.height and geom.x and geom.y then
+    t = t .. setFg("green", "<b>Dimensions</b>: ") .. "<b>x</b>:" .. geom.x .. "<b> y</b>:" .. geom.y .. "<b> w</b>:" .. geom.width .. "<b> h</b>:" .. geom.height
+  end
+
+  naughty.notify({
+    text = t,
+    timeout = 30
+  })
+end
+  
+-- }}}
 
 local layouts = {
     awful.layout.suit.floating,
@@ -85,14 +151,15 @@ local layouts = {
 -- }}}
 
 -- {{{ Tags
-tags = {
-   names = { "1", "2", "3", "4", "5"},
-   layout = { layouts[1], layouts[2], layouts[3], layouts[1], layouts[4] }
-}
-
-for s = 1, screen.count() do
-   tags[s] = awful.tag(tags.names, s, tags.layout)
-end
+ -- Define a tag table which will hold all screen tags.
+ tags = {
+   names  = { "α", "β", "γ", "δ", "φ", "χ", "ψ", "ω" },
+   layout = { layouts[1], layouts[2], layouts[2], layouts[2], layouts[2], layouts[2],
+              layouts[2], layouts[2]
+ }}
+ for s = 1, screen.count() do
+     tags[s] = awful.tag(tags.names, s, tags.layout)
+ end
 -- }}}
 
 -- {{{ Wallpaper
@@ -112,8 +179,11 @@ markup = lain.util.markup
 red    = "#EA6F81"
 
 -- Textclock
+time_format = "%H:%M:%S"
+date_format = "%a, %d %b"
+
 clockicon = wibox.widget.imagebox(beautiful.widget_clock)
-mytextclock = awful.widget.textclock(" %a %d %b  %H:%M")
+mytextclock = awful.widget.textclock(" <span font='Terminus 12'> <span font='Terminus 10' color='#FFFFFF'>" .. date_format .. " " .. time_format .. "</span> </span>", 1)
 
 -- calendar
 lain.widgets.calendar:attach(mytextclock, { font_size = 10 })
@@ -166,7 +236,7 @@ mpdwidgetbg = wibox.widget.background(mpdwidget, "#313131")
 memicon = wibox.widget.imagebox(beautiful.widget_mem)
 memwidget = lain.widgets.mem({
     settings = function()
-        widget:set_text(" " .. mem_now.used .. "MB ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. mem_now.used .. "MB </span></span>")
     end
 })
 
@@ -174,7 +244,7 @@ memwidget = lain.widgets.mem({
 cpuicon = wibox.widget.imagebox(beautiful.widget_cpu)
 cpuwidget = wibox.widget.background(lain.widgets.cpu({
     settings = function()
-        widget:set_text(" " .. cpu_now.usage .. "% ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. cpu_now.usage .. "% </span></span>")
     end
 }), "#313131")
 
@@ -182,7 +252,7 @@ cpuwidget = wibox.widget.background(lain.widgets.cpu({
 tempicon = wibox.widget.imagebox(beautiful.widget_temp)
 tempwidget = lain.widgets.temp({
     settings = function()
-        widget:set_text(" " .. coretemp_now .. "°C ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. coretemp_now .. "°C </span></span>")
     end
 })
 
@@ -190,7 +260,7 @@ tempwidget = lain.widgets.temp({
 fsicon = wibox.widget.imagebox(beautiful.widget_hdd)
 fswidget = lain.widgets.fs({
     settings  = function()
-        widget:set_text(" " .. fs_now.used .. "% ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. fs_now.used .. "% </span></span>")
     end
 })
 fswidgetbg = wibox.widget.background(fswidget, "#313131")
@@ -209,7 +279,7 @@ batwidget = lain.widgets.bat({
         else
             baticon:set_image(beautiful.widget_battery)
         end
-        widget:set_markup(" " .. bat_now.perc .. "% ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. bat_now.perc .. "% </span></span>")
     end
 })
 
@@ -227,7 +297,7 @@ volumewidget = lain.widgets.alsa({
             volicon:set_image(beautiful.widget_vol)
         end
 
-        widget:set_text(" " .. volume_now.level .. "% ")
+        widget:set_markup("<span font='Terminus 12'> <span font='Terminus 9'>" .. volume_now.level .. "% </span></span>")
     end
 })
 
@@ -396,8 +466,8 @@ globalkeys = awful.util.table.join(
     awful.key({ modkey }, "Escape", awful.tag.history.restore),
 
     -- Non-empty tag browsing
-    awful.key({ altkey }, "Left", function () lain.util.tag_view_nonempty(-1) end),
-    awful.key({ altkey }, "Right", function () lain.util.tag_view_nonempty(1) end),
+    awful.key({ modkey, altkey }, "Left", function () lain.util.tag_view_nonempty(-1) end),
+    awful.key({ modkey, altkey }, "Right", function () lain.util.tag_view_nonempty(1) end),
 
     -- Default client focus
     awful.key({ altkey }, "k",
@@ -440,7 +510,7 @@ globalkeys = awful.util.table.join(
         end),
 
     -- Show/Hide Wibox
-    awful.key({ modkey }, "b", function ()
+    awful.key({ modkey }, "v", function ()
         mywibox[mouse.screen].visible = not mywibox[mouse.screen].visible
     end),
 
@@ -469,8 +539,9 @@ globalkeys = awful.util.table.join(
 
     -- Standard program
     awful.key({ modkey,           }, "Return", function () awful.util.spawn(terminal) end),
-    awful.key({ modkey, "Control" }, "r",      awesome.restart),
-    awful.key({ modkey, "Shift"   }, "q",      awesome.quit),
+    awful.key({ modkey,           }, "F10",    awesome.restart),
+    awful.key({ modkey            }, "F11",    sys.lock ),
+    awful.key({ modkey            }, "F12",    sys.logout),
 
     -- Dropdown terminal
     awful.key({ modkey,	          }, "z",      function () drop(terminal) end),
@@ -527,10 +598,12 @@ globalkeys = awful.util.table.join(
     awful.key({ modkey }, "c", function () os.execute("xsel -p -o | xsel -i -b") end),
 
     -- User programs
-    awful.key({ modkey }, "q", function () awful.util.spawn(browser) end),
-    awful.key({ modkey }, "i", function () awful.util.spawn(browser2) end),
-    awful.key({ modkey }, "s", function () awful.util.spawn(gui_editor) end),
-    awful.key({ modkey }, "g", function () awful.util.spawn(graphics) end),
+    awful.key({ modkey 		   }, "b", function () awful.util.spawn(browser) end),
+    awful.key({ modkey, altkey }, "i", function () awful.util.spawn(browser2) end),
+    awful.key({ modkey 		   }, "e", function () awful.util.spawn(gui_editor) end),
+    awful.key({ modkey 		   }, "g", function () awful.util.spawn(graphics) end),
+    awful.key({ modkey 		   }, "d", function () awful.util.spawn('/usr/lib/idea/bin/idea.sh') end),
+    awful.key({ modkey 		   }, "f", function () awful.util.spawn('doublecmd') end),
 
     -- Prompt
     awful.key({ modkey }, "r", function () mypromptbox[mouse.screen]:run() end),
@@ -544,8 +617,9 @@ globalkeys = awful.util.table.join(
 )
 
 clientkeys = awful.util.table.join(
-    awful.key({ modkey,           }, "f",      function (c) c.fullscreen = not c.fullscreen  end),
-    awful.key({ modkey, "Shift"   }, "c",      function (c) c:kill()                         end),
+    awful.key({ modkey, "Control" }, "f",      function (c) c.fullscreen = not c.fullscreen  end),
+    awful.key({ modkey		      }, "F4",     function (c) c:kill()                         end),
+    awful.key({ modkey, "Control" }, "i",      show_window_info),
     awful.key({ modkey, "Control" }, "space",  awful.client.floating.toggle                     ),
     awful.key({ modkey, "Control" }, "Return", function (c) c:swap(awful.client.getmaster()) end),
     awful.key({ modkey,           }, "o",      awful.client.movetoscreen                        ),
@@ -555,6 +629,14 @@ clientkeys = awful.util.table.join(
             -- The client currently has the input focus, so it cannot be
             -- minimized, since minimized clients can't have the focus.
             c.minimized = true
+        end),
+	awful.key({ modkey, "Shift"   }, "n", 
+        function()
+            local tag = awful.tag.selected()
+                for i=1, #tag:clients() do
+                    tag:clients()[i].minimized=false
+                    tag:clients()[i]:redraw()
+                end
         end),
     awful.key({ modkey,           }, "m",
         function (c)
@@ -618,28 +700,141 @@ awful.rules.rules = {
                      focus = awful.client.focus.filter,
                      keys = clientkeys,
                      buttons = clientbuttons,
-	                   size_hints_honor = false } },
-    { rule = { class = "URxvt" },
-          properties = { opacity = 0.99 } },
-
-    { rule = { class = "MPlayer" },
-          properties = { floating = true } },
-
-    { rule = { class = "Dwb" },
-          properties = { tag = tags[1][1] } },
-
-    { rule = { class = "Iron" },
-          properties = { tag = tags[1][1] } },
-
-    { rule = { instance = "plugin-container" },
-          properties = { tag = tags[1][1] } },
-
-	  { rule = { class = "Gimp" },
-     	    properties = { tag = tags[1][4] } },
-
-    { rule = { class = "Gimp", role = "gimp-image-window" },
-          properties = { maximized_horizontal = true,
-                         maximized_vertical = true } },
+	                 size_hints_honor = false } 
+    },
+    { 
+        rule = { class = "Dialog" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "dialog" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { type = "dialog" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "Download" }, 
+        properties = { floating = true } 
+    },
+    { 
+        rule = { role = "pop\-up" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "webmenu" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "thunar", name = "File Operation Progress" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "Google-chrome" },
+        properties = { tag = tags[1][2], switchtotag = true, floating = false} 
+    },
+    { 
+        rule = { class = "Firefox" },
+        properties = { tag = tags[1][2], switchtotag = true, floating = false} 
+    },
+    { 
+        rule = { class = "Firefox", role = "Preferences" },
+        properties = { tag = tags[1][2], floating = true} 
+    },
+    { 
+        rule = { class = "Firefox", type = "dialog" },
+        properties = { tag = tags[1][2], floating = true} 
+    },
+    { 
+        rule = { class = "Umplayer" },
+        properties = { tag = tags[1][7] } 
+    },
+    { 
+        rule = { class = "Deadbeef" },
+        properties = { tag = tags[1][7], floating = false } 
+    },          
+    { 
+        rule = { class = "Gedit" },
+        properties = { floating = true } 
+    },
+    { 
+        rule = { class = "jetbrains-idea" },
+        properties = { tag = tags[1][3], switchtotag = true } 
+    },
+    { 
+        rule = { class = "Doublecmd" },
+        properties = { tag = tags[1][5], floating = false },
+    },
+    { 
+        rule = { class = "Doublecmd", type = "dialog" },
+        properties = { tag = tags[1][5], floating = true },
+    },
+    { 
+        rule = { class = "Doublecmd", name = "Options" },
+        properties = { tag = tags[1][5], floating = true },
+    },
+        { 
+        rule = { class = "Doublecmd", name = "Find files" },
+        properties = { tag = tags[1][5], floating = true },
+    },
+    { 
+        rule = { class = "Sublime_text" },
+        properties = { tag = tags[1][4], switchtotag = true, switchtotag = true, maximized_vertical = true, maximized_horizontal = true, floating = false} 
+    },
+--    {
+--        rule = { class = "Gimp" },
+--        properties = { floating = true } 
+--    },
+    {
+        rule = { class = "Skype"},
+        properties = { tag = tags[1][6], floating = true},
+        callback = function(c)
+            local w = screen[c.screen].workarea.width
+            local h = screen[c.screen].workarea.height
+            c:geometry({ width = 0.15 * w, height = h })
+            c.x = 0
+            c.y = 0
+        end
+    },
+    {
+        rule = { class = "Skype", role = "ConversationsWindow" },
+        properties = { floating = false },
+        callback = function(c)
+            local w = screen[c.screen].workarea.width
+            local h = screen[c.screen].workarea.height
+            awful.client.setslave(c)
+            c:struts({ left = 0.15 * w })
+        end
+    },
+    {
+        rule = { class = "Skype", role = "CallWindow" },
+        properties = { floating = false },
+        callback = function(c)
+            local w = screen[c.screen].workarea.width
+            local h = screen[c.screen].workarea.height
+            c:struts({ left = 0.15 * w })
+        end
+    },
+    {
+        rule = { class = "Skype", name = "Options" },
+        properties = { floating = true },
+        callback = function(c)
+            local w = screen[c.screen].workarea.width
+            local h = screen[c.screen].workarea.height
+            c:geometry({ width = 0.5 * w, height = 0.6 * h })
+            c.x = 0
+            c.y = 0
+        end
+    },
+    { 
+        rule = { class = "Pidgin", role = "buddy_list"},
+        properties = { tag = tags[1][6] } 
+    },
+    { 
+        rule = { class = "Pidgin", role = "conversation"},
+        properties = { tag = tags[1][6]}, callback = awful.client.setslave
+    },
 }
 -- }}}
 

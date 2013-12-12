@@ -10,8 +10,8 @@ theme                               = {}
 themes_dir                          = os.getenv("HOME") .. "/.config/awesome/themes/powerarrow-darker"
 theme.wallpaper                     = themes_dir .. "/wall.png"
 
-theme.font                          = "Terminus 9"
-theme.fg_normal                     = "#DDDDFF"
+theme.font                          = "Terminus 10"
+theme.fg_normal                     = "#FFFFFF"
 theme.fg_focus                      = "#F0DFAF"
 theme.fg_urgent                     = "#CC9393"
 theme.bg_normal                     = "#1A1A1A"
@@ -35,6 +35,15 @@ theme.awful_widget_margin_top       = 2
 theme.mouse_finder_color            = "#CC9393"
 theme.menu_height                   = "16"
 theme.menu_width                    = "140"
+
+theme.notify_font_color_1                   = green
+theme.notify_font_color_2                   = dblue
+theme.notify_font_color_3                   = black
+theme.notify_font_color_4                   = white
+theme.notify_font                           = "Terminus 10"
+theme.notify_fg                             = theme.fg_normal
+theme.notify_bg                             = theme.bg_normal
+theme.notify_border                         = theme.border_focus
 
 theme.menu_submenu_icon             = themes_dir .. "/icons/submenu.png"
 theme.taglist_squares_sel           = themes_dir .. "/icons/square_sel.png"
